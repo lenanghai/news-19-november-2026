@@ -110,6 +110,19 @@ MAP_LABELS = [("N. AMERICA", (-110, 52)), ("S. AMERICA", (-60, -25)), ("EUROPE",
 
 WARN = []
 
+# tag-bar colour by region, so the page reads as a spread across the world
+REGION_COL = {"ASIA": (150, 30, 40), "EUROPE": (26, 60, 130), "AMERICAS": (20, 110, 80),
+              "MIDEAST": (170, 100, 20), "AFRICA": (120, 70, 20), "WORLD": (70, 40, 120)}
+CARD_REGION = ["ASIA", "AMERICAS", "AMERICAS", "EUROPE", "AMERICAS", "MIDEAST", "WORLD", "AMERICAS",
+               "EUROPE", "AFRICA"]
+
+
+def gradient(d, box, top, bottom):
+    x0, y0, x1, y1 = [int(v) for v in box]
+    for yy in range(y0, y1 + 1):
+        t = (yy - y0) / max(1, y1 - y0)
+        d.line([x0, yy, x1, yy], fill=tuple(int(a + (b - a) * t) for a, b in zip(top, bottom)))
+
 
 def wrap(d, text, f, width):
     words, lines, cur = text.split(), [], ""
@@ -335,8 +348,8 @@ def draw_map(d, x0, y0, w, h, pins):
         d.text((px, py), str(num), font=F_PIN, fill=WHITE, anchor="mm")
 
 
-def tag_bar(d, x, y, w, num, tag):
-    d.rectangle([x, y, x + w, y + 20], fill=NAVY)
+def tag_bar(d, x, y, w, num, tag, col=NAVY):
+    d.rectangle([x, y, x + w, y + 20], fill=col)
     d.ellipse([x + 4, y + 2, x + 20, y + 18], fill=RED)
     d.text((x + 12, y + 10), str(num), font=F_TAG, fill=WHITE, anchor="mm")
     d.text((x + 26, y + 10), tag, font=F_TAG, fill=WHITE, anchor="lm")
@@ -359,7 +372,7 @@ def main():
     # lead story spans two columns of the first row
     hw = 2 * cw + gap
     d.rectangle([8, top, 8 + hw, top + ch], fill=CARD, outline=INK, width=2)
-    tag_bar(d, 8, top, hw, 1, HERO[0])
+    tag_bar(d, 8, top, hw, 1, HERO[0], REGION_COL["ASIA"])
     hero_art(d, 12, top + 24, 250, ch - 28)
     tx, tw = 270, 8 + hw - 270 - 6
     d.text((tx, top + 26), HERO[1], font=fit(d, HERO[1], "arialbd.ttf", 34, tw), fill=RED)
@@ -380,11 +393,18 @@ def main():
         cx = 8 + col * (cw + gap)
         cy = top + row * (ch + gap)
         d.rectangle([cx, cy, cx + cw, cy + ch], fill=CARD, outline=INK, width=2)
-        tag_bar(d, cx, cy, cw, i + 2, tag)
-        d.rounded_rectangle([cx + 5, cy + 25, cx + 91, cy + 109], radius=8, fill=panel)
-        ICONS[ic](d, cx + 8, cy + 27, 80)
-        ff = fit(d, fact, "arialbd.ttf", 30, cw - 102)
-        d.text((cx + 94 + (cw - 98) / 2, cy + 67), fact, font=ff, fill=RED, anchor="mm")
+        rc = REGION_COL[CARD_REGION[i]]
+        tag_bar(d, cx, cy, cw, i + 2, tag, rc)
+        light = tuple(min(255, int(c * 1.04)) for c in panel)
+        dark = tuple(int(c * 0.86) for c in panel)
+        gradient(d, [cx + 3, cy + 22, cx + cw - 3, cy + 110], light, dark)
+        ICONS[ic](d, cx + 8, cy + 24, 84)
+        ff = fit(d, fact, "arialbd.ttf", 30, cw - 104)
+        fx, fy = cx + 96 + (cw - 100) / 2, cy + 66
+        tw_ = d.textlength(fact, font=ff)
+        d.rounded_rectangle([fx - tw_ / 2 - 6, fy - 20, fx + tw_ / 2 + 6, fy + 20], radius=6, fill=WHITE,
+                            outline=rc, width=2)
+        d.text((fx, fy), fact, font=ff, fill=RED, anchor="mm")
         lines = wrap(d, head, F_HEAD, cw - 12)
         if len(lines) > 3:
             WARN.append(f"WRAP: card {i + 2} headline {len(lines)} lines")
